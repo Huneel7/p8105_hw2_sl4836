@@ -8,3 +8,17 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r, warning = FALSE}
+getwd()
+dir.create(file.path(getwd(), "local_data_file"), recursive = TRUE)
+list.files()
+```
+
+```{r}
+
+```
+
+```{r}
+```
+
