@@ -2,23 +2,294 @@
 title: "p8105_hw2_sl4836"
 author: "Hun"
 date: "10/5/2021"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r, warning = FALSE}
+```{r, message=FALSE}
+library(tidyverse)
+library(readxl)
+```
+
+## Problem 0
+```{r, warning = FALSE, message=FALSE}
 getwd()
+
 dir.create(file.path(getwd(), "local_data_file"), recursive = TRUE)
+
 list.files()
 ```
 
+## Problem 1 (Trash Wheel Data)
+```{r, message=FALSE}
+
+clean_trash_data <- read_excel(
+  "local_data_file/Trash-Wheel-Collection-Totals-7-2020-2.xlsx", 
+  sheet = "Mr. Trash Wheel", range = "A2:N408") %>%
+  janitor::clean_names() %>%
+  filter(!str_detect(month, 'Total')) %>% 
+  mutate(sports_balls = round(sports_balls))
+
+clean_trash_data 
+```
+
+## Problem 1 (Precipitation 2018, 2019 Data)
 ```{r}
+clean_precipation_2018_data <- read_excel(
+  "local_data_file/Trash-Wheel-Collection-Totals-7-2020-2.xlsx", 
+  sheet = "2018 Precipitation",
+  range = "A2:B15") %>% janitor::clean_names() %>% mutate(year = "2018") %>% 
+  relocate(year) %>%
+  drop_na()
+
+clean_precipation_2019_data <- read_excel(
+  "local_data_file/Trash-Wheel-Collection-Totals-7-2020-2.xlsx", 
+  sheet = "2019 Precipitation",
+  range = "A2:B15") %>% janitor::clean_names() %>% mutate(year = "2019") %>%
+  relocate(year) %>%
+  drop_na()
+
+combined_precipitation <- bind_rows(clean_precipation_2018_data, 
+                                    clean_precipation_2019_data) %>%
+  mutate(month = month.name[month]) %>% 
+  relocate(year)
+
+combined_precipitation
+```
+# Data Summarization of thef Problem_1 Datasets
+```{r}
+trash_variables <- names(clean_trash_data)
+trash_nrow <- nrow(clean_trash_data)
+trash_ncol <- ncol(clean_trash_data)
+median_sports_balls <- clean_trash_data %>% 
+  filter(year == 2019) %>% 
+  summarise(median(sports_balls)) 
+mean_sports_balls <- clean_trash_data %>% 
+  filter(year == 2019) %>%  summarise(mean(sports_balls))
+  
+
+prec_2018_variables <- names(clean_precipation_2018_data)
+prec_2018_nrow <- nrow(clean_precipation_2018_data)
+prec_2018_ncol <- ncol(clean_precipation_2018_data)
+total_precip_2018 <- clean_precipation_2018_data %>% summarise(sum(total))
+
+
+prec_2019_variables <- names(clean_precipation_2019_data)
+prec_2019_nrow <- nrow(clean_precipation_2019_data)
+prec_2019_ncol <- ncol(clean_precipation_2019_data)
+total_precip_2019 <- clean_precipation_2019_data %>% summarise(sum(total))
+
+prec_combined_variables <- names(combined_precipitation)
+prec_combined_nrow <- nrow(combined_precipitation)
+prec_combined_ncol <- ncol(combined_precipitation)
+total_combined_precip <- combined_precipitation %>% summarise(sum(total))
+
+
 
 ```
 
-```{r}
+The dimension of the trash_data is **`r trash_nrow` x**  **`r trash_ncol`.** There are **`r trash_nrow`** number of observations and **`r trash_ncol`**  variables: *`r trash_variables`.* The median number of sports balls in a dumpster in 2019 is **`r median_sports_balls`.** The mean number of sports balls in a dumpster in 2019 is **`r mean_sports_balls`** 
+
+The dimension of the 2018 precipitation data is **`r prec_2018_nrow` x**  **`r prec_2018_ncol`.** There are **`r prec_2018_nrow`** number of observations and **`r prec_2018_ncol`**  variables: *`r prec_2018_variables`.* The total precipitation in 2018 is **`r total_precip_2018`**
+
+The dimension of the 2019 precipitation data is **`r prec_2019_nrow` x**  **`r prec_2019_ncol`.** There are **`r prec_2019_nrow`** number of observations and **`r prec_2019_ncol`**  variables: *`r prec_2019_variables`.* The total precipitation in 2019 is **`r total_precip_2019`**
+
+The dimension of the combined precipitation data is **`r prec_combined_nrow` x**  **`r prec_combined_ncol`.** There are **`r prec_combined_nrow`** number of observations and **`r prec_combined_ncol`**  variables: *`r prec_combined_variables`.* The total precipitation of the combined 2018 and 2019 is **`r total_combined_precip`**
+
+
+
+## Problem 2 (1 - Pols Month Data)
+```{r, message=FALSE}
+pols_month_data <- read_csv("local_data_file/pols-month.csv")
+
+clean_pols_month_data <- pols_month_data %>%
+  janitor::clean_names() %>% 
+  separate("mon", c("year", "month", "day"), sep = "-") %>% 
+  mutate(across(.cols = c("year", "month", "day"), as.integer)) %>% 
+  mutate(month = month.name[month])  %>% 
+  mutate(president = case_when(prez_dem == 1 ~ "dem",
+                               prez_gop == 1 ~ "gop",
+                               prez_gop == 2 ~ "gop")) %>%
+    select(-day, -prez_dem, -prez_gop)
+  
+
+clean_pols_month_data
+
 ```
+
+## Problem 2 (2 - Snp Data)
+```{r, message=FALSE}
+snp_data <- read_csv("local_data_file/snp.csv")
+
+clean_snp_data <- snp_data %>% 
+  separate("date", c("month", "day", "year"), sep = "/") %>%
+  mutate(across(.cols = c("year", "month", "day"), as.integer)) %>%
+  relocate(year, month) %>%
+  mutate(month = month.name[month]) %>% 
+  mutate(year = as.numeric(year)) %>% 
+  mutate(year = ifelse(year<21, year+2000, year+1900)) %>% 
+  select(-day)
+
+clean_snp_data
+```
+
+## Problem 2 (3 - Unemployment Data)
+```{r, message=FALSE}
+unemployment_data <- read_csv("local_data_file/unemployment.csv")
+
+clean_unemployment_data <- unemployment_data %>% 
+  pivot_longer(Jan:Dec, names_to = "month", values_to = "unemployment_percent") %>% 
+  janitor::clean_names() %>% 
+  mutate(across(.cols = c("year"), as.integer))  %>%
+  mutate(month = match(month, month.abb)) %>%
+  mutate(month = month.name[month])
+
+clean_unemployment_data
+```
+#Join the datasets by merging snp into pols, and merging unemployment into the result.
+```{r, message=FALSE}
+merge1 <- left_join(clean_pols_month_data, clean_snp_data, by = c("year", "month"))
+
+merge2 <- left_join(merge1, clean_unemployment_data, by = c("year", "month"))
+
+merge2
+```
+## short paragraph about the Problem_2 Datasets
+```{r, message=FALSE}
+name_variables <- names(pols_month_data)
+nrow <- nrow(pols_month_data)
+ncol <- ncol(pols_month_data)
+
+name_variables1 <- names(clean_pols_month_data)
+nrow1 <- nrow(clean_pols_month_data)
+ncol1 <- ncol(clean_pols_month_data)
+range_year1 <- clean_pols_month_data %>% pull(year) %>% range()
+
+name_variables2 <- names(snp_data)
+nrow2 <- nrow(snp_data)
+ncol2 <- ncol(snp_data)
+
+name_variables3 <- names(clean_snp_data)
+nrow3 <- nrow(clean_snp_data)
+ncol3 <- ncol(clean_snp_data)
+range_year3 <- clean_snp_data %>% pull(year) %>% range()
+
+name_variables4 <- names(unemployment_data)
+nrow4 <- nrow(unemployment_data)
+ncol4 <- ncol(unemployment_data)
+
+name_variables5 <- names(clean_unemployment_data)
+nrow5 <- nrow(clean_unemployment_data)
+ncol5 <- ncol(clean_unemployment_data)
+range_year5 <- clean_unemployment_data %>% pull(year) %>% range()
+
+name_variables6 <- names(merge1)
+nrow6 <- nrow(merge1)
+ncol6 <- ncol(merge1)
+range_year6 <- merge1 %>% pull(year) %>% range()
+
+name_variables7 <- names(merge2)
+nrow7 <- nrow(merge2)
+ncol7 <- ncol(merge2)
+range_year7 <- merge2 %>% pull(year) %>% range()
+
+```
+Originally, the dimension of the pols_month_data was **`r nrow` x**  **`r ncol`** and there are **`r ncol`** variables: *`r name_variables`.* After tidying it, the dimension is **`r nrow1` x**  **`r ncol1`.** and there are **`r ncol1`** variables: *`r name_variables1`.* The range of years is **[`r range_year1`].**
+
+Originally, the dimension of the _data was **`r nrow2` x**  **`r ncol2`** and there are **`r ncol2`** variables: *`r name_variables2`.* After tidying it, the dimension is **`r nrow3` x**  **`r ncol3`.** and there are **`r ncol3`** variables: *`r name_variables3`.* The range of years is **[`r range_year3`].**
+
+Origianlly the dimension of the pols_month_data was **`r nrow4` x**  **`r ncol4`** and there are **`r ncol4`** variables: *`r name_variables4`.* After tidying it, the dimension is **`r nrow5` x**  **`r ncol5`.** and there are **`r ncol5`** variables: *`r name_variables5`.* The range of years is **[`r range_year5`].**
+
+After joining the datasets by merging snp into pols, the dimension of the dataset is **`r nrow6` x**  **`r ncol6`** and there are **`r ncol6`** variables: *`r name_variables6`.* The range of years is **[`r range_year6`].**
+
+After joining the datasets by additionally merging unemployment to the merged dataset, the dimension of the dataset is **`r nrow7` x**  **`r ncol7`** and there are **`r ncol7`** variables: *`r name_variables7`.* The range of years is **[`r range_year7`].**
+
+
+## Problem 3 (Cleaning Baby_Names Data for Olivia)
+```{r}
+library(dplyr)
+
+baby_names_data <-read_csv("local_data_file/Popular_Baby_Names.csv")
+
+clean_baby_names_data <- baby_names_data %>% 
+  janitor::clean_names() %>% 
+  mutate(gender = str_to_title(gender)) %>% 
+  mutate(ethnicity = str_to_title(ethnicity)) %>%
+  mutate(childs_first_name = str_to_lower(childs_first_name)) %>%
+  distinct() %>% 
+  mutate(ethnicity = 
+           recode(ethnicity, "White Non Hisp" = 
+           "White Non Hispanic", 
+           "Black Non Hisp" = "Black Non Hispanic", 
+           "Asian And Paci" = "Asian And Pacific Islander"))%>%
+  filter(str_detect(childs_first_name, 'olivia')) %>%
+  filter(str_detect(gender, 'Female')) %>%
+  arrange(year_of_birth)  
+
+clean_baby_names_data
+```
+
+#Creating the Table That Shows the Rank of the Name Olivia Popularity by Ethnicity Over Time.
+```{r, message=FALSE}
+clean_baby_names_data %>% select(rank, year_of_birth, ethnicity,
+         childs_first_name) %>%
+  pivot_wider(names_from = childs_first_name, values_from = rank,
+              names_glue = "olivia_rank") %>% 
+  pivot_wider(names_from = year_of_birth, values_from
+              =olivia_rank) %>%
+  mutate_all(~replace(., is.na(.), 0)) %>%
+  knitr::kable(caption = "**Table1: The Rank (1st to 102nd) of the Name Olivia Popularity by Ethnicity Over Time**", align = "c", format = "pipe")
+```
+
+#Cleaning Baby_names Data for Male
+```{r}
+clean_baby_male_data <- baby_names_data %>% 
+  janitor::clean_names() %>%
+  mutate(ethnicity = str_to_title(ethnicity), gender = str_to_title(gender), childs_first_name = str_to_title(childs_first_name)) %>%
+  filter(str_detect(gender, 'Male') & rank ==1) %>%
+  arrange(year_of_birth) %>%
+  mutate(ethnicity = 
+           recode(ethnicity, 
+           "White Non Hisp" = "White Non Hispanic", 
+           "Black Non Hisp" = "Black Non Hispanic", 
+           "Asian And Paci" = "Asian And Pacific Islander")) %>% 
+  select(-count, -gender, -rank) %>%
+  distinct()
+```
+
+#Creating the Table That Shows The Most Popular Name Among Male Children Over Time.
+```{r}
+library(kableExtra)
+clean_baby_male_data  %>% 
+  pivot_wider(names_from = year_of_birth, values_from =
+                childs_first_name ) %>% 
+  knitr::kable(caption = "**Table2: The Most Popular Male Names by Ethnicity Over Time**", align = "c", format = "pipe")  
+```
+
+#Creating a Scaterplot Showing the Number of Children with a Name (y axis) against the Rank in Popularity of That Name (x axis).
+```{r}
+  baby_names_data %>% 
+  janitor::clean_names() %>% 
+  distinct() %>%
+  mutate(ethnicity = str_to_title(ethnicity), gender = str_to_title(gender)) %>% 
+  mutate(ethnicity = 
+           recode(ethnicity, 
+           "White Non Hisp" = "White Non Hispanic", 
+           "Black Non Hisp" = "Black Non Hispanic", 
+           "Asian And Paci" = "Asian And Pacific Islander")) %>%
+  filter(ethnicity == "White Non Hispanic", gender == "Male",
+         year_of_birth == 2016) %>%
+  group_by(childs_first_name) %>% 
+  ggplot(aes(rank, count)) + geom_point() + 
+  labs(title = "The Number of White Non-Hispanic Male Children's First Names Born in 2016 by Rank", x = "Rank in Popularity", 
+       y="Count") + theme(plot.title = element_text(hjust = 0.4, size = 12))
+ 
+```
+
+
+
+
 
